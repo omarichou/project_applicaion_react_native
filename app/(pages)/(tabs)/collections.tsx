@@ -1,8 +1,22 @@
 
-import { useState } from 'react';
+
+
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Image, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { images } from "../../../constants";
+
+// Données de démonstration
+const sampleRecipes = [
+  { id: '1', name: 'Pasta Carbonara', image: images.logo },
+  { id: '2', name: 'Chicken Curry', image: images.logo },
+  { id: '3', name: 'Greek Salad', image: images.logo },
+  { id: '4', name: 'Grilled Salmon', image: images.logo },
+  { id: '5', name: 'Beef Bourguignon', image: images.logo },
+  { id: '6', name: 'Vegetable Stir Fry', image: images.logo },
+  { id: '7', name: 'Tiramisu', image: images.logo },
+  { id: '8', name: 'Chocolate Mousse', image: images.logo },
+];
 
 const initialCollections = [
   {
@@ -12,8 +26,8 @@ const initialCollections = [
     coverImage: images.logo,
     lastUpdated: 'Updated 2 days ago',
     recipes: [
-      { id: 'r1', name: 'Pasta Carbonara', image: images.logo },
-      { id: 'r2', name: 'Chicken Curry', image: images.logo },
+      { id: '1', name: 'Pasta Carbonara', image: images.logo },
+      { id: '2', name: 'Chicken Curry', image: images.logo },
     ]
   },
   {
@@ -23,8 +37,8 @@ const initialCollections = [
     coverImage: images.logo,
     lastUpdated: 'Updated 1 week ago',
     recipes: [
-      { id: 'r3', name: 'Greek Salad', image: images.logo },
-      { id: 'r4', name: 'Grilled Salmon', image: images.logo },
+      { id: '3', name: 'Greek Salad', image: images.logo },
+      { id: '4', name: 'Grilled Salmon', image: images.logo },
     ]
   },
 ];
@@ -33,9 +47,16 @@ export default function CollectionPage() {
   const [collections, setCollections] = useState(initialCollections);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [isSelectModalVisible, setIsSelectModalVisible] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [newCollectionName, setNewCollectionName] = useState('');
-  const [newRecipeName, setNewRecipeName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRecipes, setSelectedRecipes] = useState([]);
+
+  // Filtrer les recettes basées sur la recherche
+  const filteredRecipes = sampleRecipes.filter(recipe => 
+    recipe.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleCreateCollection = () => {
     if (newCollectionName.trim()) {
@@ -53,42 +74,81 @@ export default function CollectionPage() {
     }
   };
 
-  const handleAddRecipe = () => {
-    if (newRecipeName.trim() && selectedCollection) {
+  const openCollectionDetails = (collection) => {
+    setSelectedCollection(collection);
+    setIsViewModalVisible(true);
+  };
+
+  const openSelectRecipesModal = () => {
+    setSelectedRecipes([]);
+    setSearchQuery('');
+    setIsSelectModalVisible(true);
+  };
+
+  const toggleRecipeSelection = (recipe) => {
+    setSelectedRecipes(prev => {
+      const isSelected = prev.some(r => r.id === recipe.id);
+      if (isSelected) {
+        return prev.filter(r => r.id !== recipe.id);
+      } else {
+        return [...prev, recipe];
+      }
+    });
+  };
+
+  const addSelectedRecipes = () => {
+    if (selectedRecipes.length > 0 && selectedCollection) {
       const updatedCollections = collections.map(collection => {
         if (collection.id === selectedCollection.id) {
-          const newRecipe = {
-            id: Date.now().toString(),
-            name: newRecipeName,
-            image: images.logo
-          };
+          // Éviter les doublons
+          const newRecipes = selectedRecipes.filter(newRecipe => 
+            !collection.recipes.some(existing => existing.id === newRecipe.id)
+          );
+          
           return {
             ...collection,
-            recipes: [...collection.recipes, newRecipe],
-            count: `${collection.recipes.length + 1} recipes`,
+            recipes: [...collection.recipes, ...newRecipes],
+            count: `${collection.recipes.length + newRecipes.length} recipes`,
             lastUpdated: 'Updated just now'
           };
         }
         return collection;
       });
+      
       setCollections(updatedCollections);
-      setNewRecipeName('');
-      setSelectedCollection({
-        ...selectedCollection,
-        recipes: [...selectedCollection.recipes, {
-          id: Date.now().toString(),
-          name: newRecipeName,
-          image: images.logo
-        }],
-        count: `${selectedCollection.recipes.length + 1} recipes`,
+      setSelectedCollection(prev => ({
+        ...prev,
+        recipes: [...prev.recipes, ...selectedRecipes],
+        count: `${prev.recipes.length + selectedRecipes.length} recipes`,
         lastUpdated: 'Updated just now'
-      });
+      }));
+      setIsSelectModalVisible(false);
     }
   };
 
-  const openCollectionDetails = (collection) => {
-    setSelectedCollection(collection);
-    setIsViewModalVisible(true);
+  const removeRecipe = (recipeId) => {
+    if (selectedCollection) {
+      const updatedCollections = collections.map(collection => {
+        if (collection.id === selectedCollection.id) {
+          const updatedRecipes = collection.recipes.filter(r => r.id !== recipeId);
+          return {
+            ...collection,
+            recipes: updatedRecipes,
+            count: `${updatedRecipes.length} recipes`,
+            lastUpdated: 'Updated just now'
+          };
+        }
+        return collection;
+      });
+      
+      setCollections(updatedCollections);
+      setSelectedCollection(prev => ({
+        ...prev,
+        recipes: prev.recipes.filter(r => r.id !== recipeId),
+        count: `${prev.recipes.length - 1} recipes`,
+        lastUpdated: 'Updated just now'
+      }));
+    }
   };
 
   return (
@@ -173,7 +233,7 @@ export default function CollectionPage() {
                 style={styles.createCollectionButton}
                 onPress={handleCreateCollection}
               >
-                <Text style={styles.createButtonText}>Create Collection</Text>
+                <Text style={styles.createButtonText2}>Create Collection</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -206,6 +266,12 @@ export default function CollectionPage() {
                       <View style={styles.recipeItem}>
                         <Image source={item.image} style={styles.recipeImage} />
                         <Text style={styles.recipeName}>{item.name}</Text>
+                        <TouchableOpacity 
+                          onPress={() => removeRecipe(item.id)}
+                          style={styles.removeButton}
+                        >
+                          <Ionicons name="trash" size={20} color="#FF6B6B" />
+                        </TouchableOpacity>
                       </View>
                     )}
                     ListEmptyComponent={
@@ -214,22 +280,79 @@ export default function CollectionPage() {
                     contentContainerStyle={styles.recipesListContent}
                   />
 
-                  <View style={styles.addRecipeContainer}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Add new recipe name"
-                      value={newRecipeName}
-                      onChangeText={setNewRecipeName}
-                    />
-                    <TouchableOpacity 
-                      style={styles.addButton}
-                      onPress={handleAddRecipe}
-                    >
-                      <Text style={styles.addButtonText}>Add Recipe</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity 
+                    style={styles.addButton}
+                    onPress={openSelectRecipesModal}
+                  >
+                    <Text style={styles.addButtonText}>Add Recipes</Text>
+                  </TouchableOpacity>
                 </>
               )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal for selecting recipes */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isSelectModalVisible}
+          onRequestClose={() => setIsSelectModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, styles.viewModalContent]}>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setIsSelectModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+
+              <Text style={styles.modalTitle}>Select Recipes</Text>
+              
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search recipes..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+
+              <FlatList
+                data={filteredRecipes}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={[
+                      styles.selectableRecipeItem,
+                      selectedRecipes.some(r => r.id === item.id) && styles.selectedRecipeItem
+                    ]}
+                    onPress={() => toggleRecipeSelection(item)}
+                  >
+                    <Image source={item.image} style={styles.recipeImage} />
+                    <Text style={styles.recipeName}>{item.name}</Text>
+                    {selectedRecipes.some(r => r.id === item.id) && (
+                      <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                    )}
+                  </TouchableOpacity>
+                )}
+                contentContainerStyle={styles.recipesListContent}
+              />
+
+              <TouchableOpacity 
+                style={[
+                  styles.addSelectedButton,
+                  selectedRecipes.length === 0 && styles.disabledButton
+                ]}
+                onPress={addSelectedRecipes}
+                disabled={selectedRecipes.length === 0}
+              >
+                <Text style={styles.addButtonText}>
+                  Add Selected ({selectedRecipes.length})
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -279,6 +402,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FF6B6B',
+  },
+  createButtonText2: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
   listContent: {
     paddingBottom: 100,
@@ -406,20 +535,21 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
   },
+  removeButton: {
+    padding: 8,
+  },
   emptyText: {
     textAlign: 'center',
     color: '#999',
     marginVertical: 20,
     fontSize: 16,
   },
-  addRecipeContainer: {
-    marginTop: 20,
-  },
   addButton: {
     backgroundColor: '#4CAF50',
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
+    marginTop: 20,
   },
   addButtonText: {
     color: '#fff',
@@ -427,5 +557,41 @@ const styles = StyleSheet.create({
   },
   recipesListContent: {
     paddingBottom: 20,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    color: '#333',
+  },
+  selectableRecipeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  selectedRecipeItem: {
+    backgroundColor: '#f5f5f5',
+  },
+  addSelectedButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
   },
 });
